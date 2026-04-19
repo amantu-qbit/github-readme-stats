@@ -136,11 +136,28 @@ You can pass a query parameter `&hide=` to hide any specific stats with comma-se
 
 You can pass a query parameter `&show=` to show any specific additional stats with comma-separated values.
 
-> Options: `&show=reviews,discussions_started,discussions_answered,prs_merged,prs_merged_percentage`
+> Options: `&show=reviews,discussions_started,discussions_answered,prs_merged,prs_merged_percentage,private_contribs,total_contribs`
 
 ```md
 ![Anurag's GitHub stats](https://github-readme-stats.vercel.app/api?username=anuraghazra&show=reviews,discussions_started,discussions_answered,prs_merged,prs_merged_percentage)
 ```
+
+### Including private work / contributions
+
+By default the card mirrors what an unauthenticated visitor would see on GitHub. If you deploy your own instance (recommended — see [Deploy on your own](#deploy-on-your-own)) with a Personal Access Token that includes the `repo` scope, the card will also count work performed in private repositories:
+
+- Commits, PRs, issues, and stars from **private repos you own** are included automatically. They flow through the same `exclude_repo` / `EXCLUDED_REPOSITORIES` filters, so you can still hide sensitive repo names.
+- Pass `&include_private=true` to add your **restricted contribution count** (private work visible only to the token owner) into the total commit / contribution numbers.
+- Pass `&show=private_contribs` to surface a dedicated "Private Contributions" row on the card. It is also shown automatically when `include_private=true` *and* the restricted count is non-zero.
+- Pass `&show=total_contribs` to display total contributions (commits + issues + PRs + reviews + private) for the selected year window.
+
+> ⚠️ On the public shared instance (`github-readme-stats.vercel.app`) the PAT is controlled by the project maintainer and cannot see *your* private repos. To count private work you must deploy your own instance — this is a GitHub authorization boundary, not a configuration one.
+
+```md
+![Anurag's GitHub stats](https://your-instance.vercel.app/api?username=anuraghazra&include_private=true&show=private_contribs,total_contribs&show_icons=true)
+```
+
+You can also opt-in on your **GitHub profile** (Settings → Profile → "Include private contributions on my profile") to surface the private contribution *count* (not individual details) to any viewer, in which case it will show up on the public instance as well.
 
 ### Showing icons
 
@@ -375,6 +392,7 @@ If we don't support your language, please consider contributing! You can find mo
 | `rank_icon` | Shows alternative rank icon (i.e. `github`, `percentile` or `default`). | enum | `default` |
 | `show_icons` | Shows icons near all stats. | boolean | `false` |
 | `include_all_commits` | Count total commits instead of just the current year commits. | boolean | `false` |
+| `include_private` | Add restricted (private) contributions the viewer cannot see into the total commit and contribution counts. Requires deploying your own instance with a `repo`-scoped PAT. | boolean | `false` |
 | `line_height` | Sets the line height between text. | integer | `25` |
 | `exclude_repo` | Excludes specified repositories. | string (comma-separated values) | `null` |
 | `custom_title` | Sets a custom title for the card. | string | `<username> GitHub Stats` |
@@ -383,7 +401,7 @@ If we don't support your language, please consider contributing! You can find mo
 | `ring_color` | Color of the rank circle. | string (hex color) | `2f80ed` |
 | `number_format` | Switches between two available formats for displaying the card values `short` (i.e. `6.6k`) and `long` (i.e. `6626`). | enum | `short` |
 | `number_precision` | Enforce the number of digits after the decimal point for `short` number format. Must be an integer between 0 and 2. Will be ignored for `long` number format. | integer (0, 1 or 2) | `null` |
-| `show` | Shows [additional items](#showing-additional-individual-stats) on stats card (i.e. `reviews`, `discussions_started`, `discussions_answered`, `prs_merged` or `prs_merged_percentage`). | string (comma-separated values) | `null` |
+| `show` | Shows [additional items](#showing-additional-individual-stats) on stats card (i.e. `reviews`, `discussions_started`, `discussions_answered`, `prs_merged`, `prs_merged_percentage`, `private_contribs`, or `total_contribs`). | string (comma-separated values) | `null` |
 | `commits_year` | Filters and counts only commits made in the specified year. | integer _(YYYY)_ | `<current year> (one year to date)` |
 
 > [!WARNING]

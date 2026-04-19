@@ -267,6 +267,8 @@ const renderStatsCard = (stats, options = {}) => {
     totalDiscussionsStarted,
     totalDiscussionsAnswered,
     contributedTo,
+    privateContributions = 0,
+    totalContributions = 0,
     rank,
   } = stats;
   const {
@@ -277,6 +279,7 @@ const renderStatsCard = (stats, options = {}) => {
     card_width,
     hide_rank = false,
     include_all_commits = false,
+    include_private = false,
     commits_year,
     line_height = 25,
     title_color,
@@ -408,6 +411,34 @@ const renderStatsCard = (stats, options = {}) => {
     value: contributedTo,
     id: "contribs",
   };
+
+  // Show private contributions automatically when include_private is set and
+  // the PAT surfaced a non-zero restricted count, or explicitly via
+  // `show=private_contribs`. Keeps the card quiet when there is nothing to show.
+  if (
+    show.includes("private_contribs") ||
+    (include_private && privateContributions > 0)
+  ) {
+    STATS.private_contribs = {
+      icon: icons.private_contribs,
+      label: i18n.t("statcard.private-contribs"),
+      value: privateContributions,
+      id: "private_contribs",
+    };
+  }
+
+  if (show.includes("total_contribs")) {
+    STATS.total_contribs = {
+      icon: icons.total_contribs,
+      label: `${i18n.t("statcard.total-contribs")}${getTotalCommitsYearLabel(
+        include_all_commits,
+        commits_year,
+        i18n,
+      )}`,
+      value: totalContributions,
+      id: "total_contribs",
+    };
+  }
 
   // @ts-ignore
   const isLongLocale = locale ? LONG_LOCALES.includes(locale) : false;

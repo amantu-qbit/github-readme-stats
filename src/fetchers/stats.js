@@ -14,11 +14,17 @@ import { request } from "../common/http.js";
 dotenv.config();
 
 // GraphQL queries.
+// `ownerAffiliations: OWNER` already covers private repositories owned by the
+// authenticated user when the PAT is issued with `repo` scope, so private stars
+// are naturally included. We also surface `isPrivate`/`isFork` so callers can
+// filter or audit what was counted without a second round-trip.
 const GRAPHQL_REPOS_FIELD = `
   repositories(first: 100, ownerAffiliations: OWNER, orderBy: {direction: DESC, field: STARGAZERS}, after: $after) {
     totalCount
     nodes {
       name
+      isPrivate
+      isFork
       stargazers {
         totalCount
       }
@@ -38,13 +44,23 @@ const GRAPHQL_REPOS_QUERY = `
   }
 `;
 
+// `restrictedContributionsCount` exposes contributions the *viewer* cannot see
+// — typically private-repo work when the PAT belongs to a different user or
+// when "Include private contributions on my profile" is disabled. When the PAT
+// owner is the same user being queried, this is effectively private work that
+// is not otherwise counted by `totalCommitContributions` unless profile privacy
+// settings allow it.
 const GRAPHQL_STATS_QUERY = `
   query userInfo($login: String!, $after: String, $includeMergedPullRequests: Boolean!, $includeDiscussions: Boolean!, $includeDiscussionsAnswers: Boolean!, $startTime: DateTime = null) {
     user(login: $login) {
       name
       login
       commits: contributionsCollection (from: $startTime) {
-        totalCommitContributions,
+        totalCommitContributions
+        restrictedContributionsCount
+        totalIssueContributions
+        totalPullRequestContributions
+        totalPullRequestReviewContributions
       }
       reviews: contributionsCollection {
         totalPullRequestReviewContributions
@@ -222,6 +238,10 @@ const totalCommitsFetcher = async (username) => {
  * @param {boolean} include_discussions Include discussions.
  * @param {boolean} include_discussions_answers Include discussions answers.
  * @param {number|undefined} commits_year Year to count total commits
+ * @param {boolean} include_private When true, add restricted (private) contributions the
+ *   viewer cannot see to the displayed commit/contribution totals. Requires a PAT with
+ *   `repo` scope or the target user to opt in via "Include private contributions on my
+ *   profile". No-op otherwise.
  * @returns {Promise<import("./types").StatsData>} Stats data.
  */
 const fetchStats = async (
@@ -232,6 +252,7 @@ const fetchStats = async (
   include_discussions = false,
   include_discussions_answers = false,
   commits_year,
+  include_private = false,
 ) => {
   if (!username) {
     throw new MissingParamError(["username"]);
@@ -249,6 +270,8 @@ const fetchStats = async (
     totalDiscussionsStarted: 0,
     totalDiscussionsAnswered: 0,
     contributedTo: 0,
+    privateContributions: 0,
+    totalContributions: 0,
     rank: { level: "C", percentile: 100 },
   };
 
@@ -285,11 +308,28 @@ const fetchStats = async (
 
   stats.name = user.name || user.login;
 
-  // if include_all_commits, fetch all commits using the REST API.
+  // The `commits` alias is a `contributionsCollection` scoped to the last year
+  // (or `startTime` if `commits_year` was provided). `restrictedContributionsCount`
+  // is the subset of those contributions the current viewer cannot see — i.e.
+  // private work when the PAT lacks access or the profile privacy flag is off.
+  const restrictedCount = user.commits?.restrictedContributionsCount ?? 0;
+  stats.privateContributions = restrictedCount;
+
+  // if include_all_commits, fetch all commits using the REST API. The REST
+  // search endpoint only covers repositories the token can read, so private
+  // commits are included when the PAT carries `repo` scope; otherwise we
+  // supplement with the restricted count from the contributions collection so
+  // the displayed number reflects private work that happened in the window.
   if (include_all_commits) {
     stats.totalCommits = await totalCommitsFetcher(username);
+    if (include_private) {
+      stats.totalCommits += restrictedCount;
+    }
   } else {
     stats.totalCommits = user.commits.totalCommitContributions;
+    if (include_private) {
+      stats.totalCommits += restrictedCount;
+    }
   }
 
   stats.totalPRs = user.pullRequests.totalCount;
@@ -310,7 +350,20 @@ const fetchStats = async (
   }
   stats.contributedTo = user.repositoriesContributedTo.totalCount;
 
-  // Retrieve stars while filtering out repositories to be hidden.
+  // Accurate total contributions across the window: commit + issue + PR +
+  // review contributions from the collection, plus private contributions that
+  // the viewer can't see individually but the API still counts.
+  stats.totalContributions =
+    (user.commits?.totalCommitContributions ?? 0) +
+    (user.commits?.totalIssueContributions ?? 0) +
+    (user.commits?.totalPullRequestContributions ?? 0) +
+    (user.commits?.totalPullRequestReviewContributions ?? 0) +
+    restrictedCount;
+
+  // Retrieve stars while filtering out repositories to be hidden. Private
+  // repositories owned by the user are already present when the PAT has `repo`
+  // scope — they go through the same exclusion pipeline so users can selectively
+  // hide sensitive repo names via `exclude_repo` / `EXCLUDED_REPOSITORIES`.
   const allExcludedRepos = [...exclude_repo, ...excludeRepositories];
   let repoToHide = new Set(allExcludedRepos);
 

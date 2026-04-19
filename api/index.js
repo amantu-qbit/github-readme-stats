@@ -28,6 +28,7 @@ export default async (req, res) => {
     hide_rank,
     show_icons,
     include_all_commits,
+    include_private,
     commits_year,
     line_height,
     title_color,
@@ -85,6 +86,7 @@ export default async (req, res) => {
 
   try {
     const showStats = parseArray(show);
+    const includePrivate = parseBoolean(include_private);
     const stats = await fetchStats(
       username,
       parseBoolean(include_all_commits),
@@ -94,6 +96,9 @@ export default async (req, res) => {
       showStats.includes("discussions_started"),
       showStats.includes("discussions_answered"),
       parseInt(commits_year, 10),
+      includePrivate ||
+        showStats.includes("private_contribs") ||
+        showStats.includes("total_contribs"),
     );
     const cacheSeconds = resolveCacheSeconds({
       requested: parseInt(cache_seconds, 10),
@@ -113,6 +118,7 @@ export default async (req, res) => {
         card_width: parseInt(card_width, 10),
         hide_rank: parseBoolean(hide_rank),
         include_all_commits: parseBoolean(include_all_commits),
+        include_private: includePrivate,
         commits_year: parseInt(commits_year, 10),
         line_height,
         title_color,

@@ -13,6 +13,10 @@ const data_stats = {
       repositoriesContributedTo: { totalCount: 61 },
       commits: {
         totalCommitContributions: 100,
+        restrictedContributionsCount: 25,
+        totalIssueContributions: 15,
+        totalPullRequestContributions: 30,
+        totalPullRequestReviewContributions: 50,
       },
       reviews: {
         totalPullRequestReviewContributions: 50,
@@ -152,6 +156,8 @@ describe("Test fetchStats", () => {
       totalStars: 300,
       totalDiscussionsStarted: 0,
       totalDiscussionsAnswered: 0,
+      privateContributions: 25,
+      totalContributions: 220,
       rank,
     });
   });
@@ -188,6 +194,8 @@ describe("Test fetchStats", () => {
       totalStars: 300,
       totalDiscussionsStarted: 0,
       totalDiscussionsAnswered: 0,
+      privateContributions: 25,
+      totalContributions: 220,
       rank,
     });
   });
@@ -230,6 +238,8 @@ describe("Test fetchStats", () => {
       totalStars: 300,
       totalDiscussionsStarted: 0,
       totalDiscussionsAnswered: 0,
+      privateContributions: 25,
+      totalContributions: 220,
       rank,
     });
   });
@@ -279,6 +289,8 @@ describe("Test fetchStats", () => {
       totalStars: 200,
       totalDiscussionsStarted: 0,
       totalDiscussionsAnswered: 0,
+      privateContributions: 25,
+      totalContributions: 220,
       rank,
     });
   });
@@ -310,6 +322,8 @@ describe("Test fetchStats", () => {
       totalStars: 400,
       totalDiscussionsStarted: 0,
       totalDiscussionsAnswered: 0,
+      privateContributions: 25,
+      totalContributions: 220,
       rank,
     });
   });
@@ -341,6 +355,8 @@ describe("Test fetchStats", () => {
       totalStars: 300,
       totalDiscussionsStarted: 0,
       totalDiscussionsAnswered: 0,
+      privateContributions: 25,
+      totalContributions: 220,
       rank,
     });
   });
@@ -372,6 +388,8 @@ describe("Test fetchStats", () => {
       totalStars: 300,
       totalDiscussionsStarted: 0,
       totalDiscussionsAnswered: 0,
+      privateContributions: 25,
+      totalContributions: 220,
       rank,
     });
   });
@@ -401,6 +419,8 @@ describe("Test fetchStats", () => {
       totalStars: 300,
       totalDiscussionsStarted: 0,
       totalDiscussionsAnswered: 0,
+      privateContributions: 25,
+      totalContributions: 220,
       rank,
     });
   });
@@ -430,6 +450,8 @@ describe("Test fetchStats", () => {
       totalStars: 300,
       totalDiscussionsStarted: 10,
       totalDiscussionsAnswered: 40,
+      privateContributions: 25,
+      totalContributions: 220,
       rank,
     });
   });
@@ -468,6 +490,8 @@ describe("Test fetchStats", () => {
       totalStars: 300,
       totalDiscussionsStarted: 0,
       totalDiscussionsAnswered: 0,
+      privateContributions: 25,
+      totalContributions: 548,
       rank,
     });
   });
@@ -501,7 +525,43 @@ describe("Test fetchStats", () => {
       totalStars: 300,
       totalDiscussionsStarted: 0,
       totalDiscussionsAnswered: 0,
+      privateContributions: 25,
+      totalContributions: 220,
       rank,
     });
+  });
+
+  it("should include restricted (private) contributions in totalCommits when include_private=true", async () => {
+    let stats = await fetchStats(
+      "anuraghazra",
+      false,
+      [],
+      false,
+      false,
+      false,
+      undefined,
+      true,
+    );
+    expect(stats.totalCommits).toBe(125);
+    expect(stats.privateContributions).toBe(25);
+    expect(stats.totalContributions).toBe(220);
+  });
+
+  it("should add private contributions on top of include_all_commits when include_private=true", async () => {
+    mock
+      .onGet("https://api.github.com/search/commits?q=author:anuraghazra")
+      .reply(200, { total_count: 1000 });
+    let stats = await fetchStats(
+      "anuraghazra",
+      true,
+      [],
+      false,
+      false,
+      false,
+      undefined,
+      true,
+    );
+    expect(stats.totalCommits).toBe(1025);
+    expect(stats.privateContributions).toBe(25);
   });
 });
